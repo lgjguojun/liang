@@ -7,6 +7,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import akshare as ak
 import pandas as pd
@@ -15,6 +16,7 @@ DAY_RECORD_STRUCT = struct.Struct("<IIIIIfII")
 PRICE_SCALE = 100
 RESERVED_VALUE = 65536
 SYMBOL_PATTERN = re.compile(r"^(sh|sz|bj)(\d{6})$", re.IGNORECASE)
+MARKET_TIMEZONE = ZoneInfo("Asia/Shanghai")
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,8 @@ def fetch_history(symbol: str, months: int) -> pd.DataFrame:
     if not match:
         raise ValueError(f"Unsupported symbol format: {symbol}")
 
-    today = pd.Timestamp.today().normalize()
+    # Use market-local date so scheduled and manual runs behave consistently.
+    today = pd.Timestamp.now(tz=MARKET_TIMEZONE).normalize().tz_localize(None)
     start_date = (today - pd.DateOffset(months=months + 2)).strftime("%Y%m%d")
     end_date = today.strftime("%Y%m%d")
 
